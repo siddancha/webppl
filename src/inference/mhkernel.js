@@ -13,7 +13,9 @@ module.exports = function(env) {
       exitFactor: 0,
       permissive: false,
       discreteOnly: false,
-      adRequired: false
+      adRequired: false,
+      factorCoeff: 1,
+      observeTable: undefined
     });
 
     if (!options.permissive) {
@@ -29,6 +31,9 @@ module.exports = function(env) {
     this.exitFactor = options.exitFactor;
     this.discreteOnly = options.discreteOnly;
     this.adRequired = options.adRequired;
+
+    this.factorCoeff = options.factorCoeff;
+    this.observeTable = options.observeTable;
 
     this.coroutine = env.coroutine;
     env.coroutine = this;
@@ -58,6 +63,16 @@ module.exports = function(env) {
     }
     return k(s);
   };
+
+  MHKernel.prototype.observe = function(s, k, a, dist, val) {
+    // observe statement is essentially a factor statement which takes <dist> and <val>
+    // as arguments and calls factor on dist.score(val). However, it also returns <val>.
+    if (this.observeTable !== undefined)
+      val = this.observeTable[a];
+    assert(val !== undefined);
+    var factorK = function(s) {return k(s, val)};
+    return this.factor(s, factorK, a, dist.score(val));
+  }
 
   MHKernel.prototype.sample = function(s, k, a, dist, options, forceSample) {
     var _val, val;
@@ -97,7 +112,7 @@ module.exports = function(env) {
       assert(this.trace.k);
       assert(!this.trace.isComplete());
     }
-    var prob = this.acceptProb(this.trace, this.oldTrace);
+    var prob = this.acceptProb(this.trace, this.oldTrace, this.factorCoeff);
     var accept = util.random() < prob;
     return this.finish(accept ? this.trace : this.oldTrace, accept);
   };
@@ -150,7 +165,7 @@ module.exports = function(env) {
     return numChoices > 0 ? this.proposalBoundary + Math.floor(util.random() * numChoices) : -1;
   };
 
-  MHKernel.prototype.acceptProb = function(trace, oldTrace) {
+  MHKernel.prototype.acceptProb = function(trace, oldTrace, factorCoeff) {
     // assert.notStrictEqual(trace, undefined);
     // assert.notStrictEqual(oldTrace, undefined);
     // assert(_.isNumber(ad.value(trace.score)));
@@ -160,7 +175,9 @@ module.exports = function(env) {
 
     var fw = this.transitionProb(oldTrace, trace);
     var bw = this.transitionProb(trace, oldTrace);
-    var p = Math.exp(ad.value(trace.score) - ad.value(oldTrace.score) + bw - fw);
+    var oldScore = factorCoeff * ad.value(oldTrace.score) + (1 - factorCoeff) * ad.value(oldTrace.sampleScore);
+    var newScore = factorCoeff * ad.value(trace.score) + (1 - factorCoeff) * ad.value(trace.sampleScore);
+    var p = Math.exp(newScore - oldScore + bw - fw);
     assert(!isNaN(p));
     return Math.min(1, p);
   };

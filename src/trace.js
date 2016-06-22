@@ -17,6 +17,7 @@ var Trace = function(wpplFn, s, k, a) {
   this.addressMap = {}; // Maps addresses => choices.
   this.length = 0;
   this.score = 0;
+  this.sampleScore = 0; // The part of the score contributed by sample statements.
   this.numFactors = 0; // The number of factors encountered so far.
   // this.checkConsistency();
 };
@@ -66,6 +67,7 @@ Trace.prototype.addChoice = function(dist, val, address, store, continuation) {
     // Record the score without adding the choiceScore. This is the score we'll
     // need if we regen from this choice.
     score: this.score,
+    sampleScore: this.sampleScore,
     val: val,
     store: _.clone(store),
     numFactors: this.numFactors
@@ -75,6 +77,7 @@ Trace.prototype.addChoice = function(dist, val, address, store, continuation) {
   this.addressMap[address] = choice;
   this.length += 1;
   this.score = ad.scalar.add(this.score, dist.score(val));
+  this.sampleScore = ad.scalar.add(this.sampleScore, dist.score(val));
   // this.checkConsistency();
 };
 
@@ -100,6 +103,7 @@ Trace.prototype.upto = function(i) {
   t.choices.forEach(function(choice) { t.addressMap[choice.address] = choice; });
   t.length = t.choices.length;
   t.score = this.choices[i].score;
+  t.sampleScore = this.choices[i].sampleScore;
   t.numFactors = this.choices[i].numFactors;
   // t.checkConsistency();
   return t;
@@ -111,6 +115,7 @@ Trace.prototype.copy = function() {
   t.addressMap = _.clone(this.addressMap);
   t.length = this.length;
   t.score = this.score;
+  t.sampleScore = this.sampleScore;
   t.k = this.k;
   t.store = _.clone(this.store);
   t.address = this.address;

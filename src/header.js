@@ -83,6 +83,13 @@ module.exports = function(env) {
     return env.coroutine.factor(s, k, a, score);
   };
 
+  env.observe = function(s, k, a, dist, val) {
+    if (!dists.isDist(dist)) {
+      throw new Error('observe() expected a distribution but received \"' + JSON.stringify(dist) + '\".');
+    }
+    return env.coroutine.observe(s, k, a, dist, val);
+  }
+
   env.sampleWithFactor = function(s, k, a, dist, scoreFn) {
     if (typeof env.coroutine.sampleWithFactor === 'function') {
       return env.coroutine.sampleWithFactor(s, k, a, dist, scoreFn);
@@ -125,6 +132,7 @@ module.exports = function(env) {
   // Inference interface
   addExports({
     factor: env.factor,
+    observe: env.observe,
     sample: env.sample,
     sampleWithFactor: env.sampleWithFactor,
     incrementalize: env.incrementalize,
